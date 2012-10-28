@@ -99,6 +99,9 @@ class TestProgram(unittest.TestProgram):
     def __init__(self, module=None, defaultTest='.', argv=None,
                  testRunner=None, testLoader=None, env=None, config=None,
                  suite=None, exit=True, plugins=None, addplugins=None):
+        import sys
+        self.mods_before = set(sys.modules.keys())
+
         if env is None:
             env = os.environ
         if config is None:
@@ -108,6 +111,7 @@ class TestProgram(unittest.TestProgram):
         self.config = config
         self.suite = suite
         self.exit = exit
+        self.mod_name = module
         extra_args = {}
         version = sys.version_info[0:2]
         if version >= (2,7) and version != (3,0):
@@ -187,6 +191,8 @@ class TestProgram(unittest.TestProgram):
         self.success to the same value.
         """
         log.debug("runTests called")
+        log.error("runTests called 2")
+        log.error("runTests called, mod: %s" % self.test.context.__name__)
         if self.testRunner is None:
             self.testRunner = TextTestRunner(stream=self.config.stream,
                                              verbosity=self.config.verbosity,
@@ -194,7 +200,19 @@ class TestProgram(unittest.TestProgram):
         plug_runner = self.config.plugins.prepareTestRunner(self.testRunner)
         if plug_runner is not None:
             self.testRunner = plug_runner
+
+
         result = self.testRunner.run(self.test)
+
+        mods_after = set(sys.modules.keys())
+        diff = mods_after.difference(self.mods_before)
+        filtered = set()
+        for x in diff:
+            if x.startswith("streema"):
+                filtered.add(x)
+        log.error("Modulos usados %s" % filtered)
+        # XXX: get md5sum for all module files ?
+
         self.success = result.wasSuccessful()
         if self.exit:
             sys.exit(not self.success)
